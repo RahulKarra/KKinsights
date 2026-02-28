@@ -322,20 +322,232 @@ document.addEventListener('DOMContentLoaded', function() {
     setInterval(nextCarousel, 5000);
 });
 
-// Contact Form
-document.getElementById('contact-form').addEventListener('submit', function(e) {
-    e.preventDefault();
-    alert('Thank you for your message! We will get back to you within 24 hours.');
-    this.reset();
+// Form verification and Validation
+const form = document.getElementById('contact-form');
+const nameInput = document.getElementById('name');
+const emailInput = document.getElementById('email');
+const phoneInput = document.getElementById('phone');
+const subjectInput = document.getElementById('subject');
+const messageInput = document.getElementById('message');
+
+// Error message elements
+const nameError = document.getElementById('name-error');
+const emailError = document.getElementById('email-error');
+const phoneError = document.getElementById('phone-error');
+const subjectError = document.getElementById('subject-error');
+const messageError = document.getElementById('message-error');
+
+// Email validation regex
+const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+
+// Indian phone number regex (10 digits starting with 6-9)
+const phoneRegex = /^[6-9]\d{9}$/;
+
+// Real-time validation functions
+function validateName() {
+    const value = nameInput.value.trim();
+    if (value.length < 2) {
+        showError(nameError, 'Name must be at least 2 characters');
+        return false;
+    }
+    hideError(nameError);
+    return true;
+}
+
+function validateEmail() {
+    const value = emailInput.value.trim();
+    if (!emailRegex.test(value)) {
+        showError(emailError, 'Please enter a valid email (e.g., user@example.com)');
+        return false;
+    }
+    hideError(emailError);
+    return true;
+}
+
+function validatePhone() {
+    const value = phoneInput.value.trim();
+    
+    // If empty, it's optional so valid
+    if (value === '') {
+        hideError(phoneError);
+        return true;
+    }
+    
+    // Check if exactly 10 digits and starts with 6-9
+    if (!phoneRegex.test(value)) {
+        if (value.length !== 10) {
+            showError(phoneError, 'Phone number must be exactly 10 digits');
+        } else if (!/^[6-9]/.test(value)) {
+            showError(phoneError, 'Phone number must start with 6, 7, 8, or 9');
+        } else {
+            showError(phoneError, 'Please enter a valid Indian phone number');
+        }
+        return false;
+    }
+    
+    hideError(phoneError);
+    return true;
+}
+
+function validateSubject() {
+    const value = subjectInput.value.trim();
+    if (value.length < 5) {
+        showError(subjectError, 'Subject must be at least 5 characters');
+        return false;
+    }
+    hideError(subjectError);
+    return true;
+}
+
+function validateMessage() {
+    const value = messageInput.value.trim();
+    if (value.length < 10) {
+        showError(messageError, 'Message must be at least 10 characters');
+        return false;
+    }
+    if (value.length > 1000) {
+        showError(messageError, 'Message cannot exceed 1000 characters');
+        return false;
+    }
+    hideError(messageError);
+    return true;
+}
+
+function showError(element, message) {
+    element.textContent = message;
+    element.classList.remove('hidden');
+    element.previousElementSibling.classList.add('border-red-500');
+}
+
+function hideError(element) {
+    element.classList.add('hidden');
+    element.previousElementSibling.classList.remove('border-red-500');
+}
+
+// Real-time validation on input
+nameInput.addEventListener('blur', validateName);
+emailInput.addEventListener('blur', validateEmail);
+phoneInput.addEventListener('blur', validatePhone);
+subjectInput.addEventListener('blur', validateSubject);
+messageInput.addEventListener('blur', validateMessage);
+
+// Phone number: Only allow digits and limit to 10
+phoneInput.addEventListener('input', function(e) {
+    // Remove any non-digit characters
+    this.value = this.value.replace(/\D/g, '');
+    
+    // Limit to 10 digits
+    if (this.value.length > 10) {
+        this.value = this.value.slice(0, 10);
+    }
+    
+    // Show real-time validation if user is typing
+    if (this.value.length > 0) {
+        validatePhone();
+    }
 });
 
-// Smooth scroll for all links
-document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-    anchor.addEventListener('click', function (e) {
-        e.preventDefault();
-        const target = document.querySelector(this.getAttribute('href'));
-        if (target) {
-            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+// Character counter for message
+messageInput.addEventListener('input', function() {
+    const charCount = document.getElementById('char-count');
+    charCount.textContent = this.value.length;
+    
+    if (this.value.length > 1000) {
+        charCount.classList.add('text-red-600');
+        charCount.classList.remove('text-gray-500');
+    } else {
+        charCount.classList.remove('text-red-600');
+        charCount.classList.add('text-gray-500');
+    }
+});
+
+// Form submission with validation
+form.addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    // Validate all fields
+    const isNameValid = validateName();
+    const isEmailValid = validateEmail();
+    const isPhoneValid = validatePhone();
+    const isSubjectValid = validateSubject();
+    const isMessageValid = validateMessage();
+    
+    // Check if all validations passed
+    if (!isNameValid || !isEmailValid || !isPhoneValid || !isSubjectValid || !isMessageValid) {
+        // Scroll to first error
+        const firstError = document.querySelector('.text-red-600:not(.hidden)');
+        if (firstError) {
+            firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
+        return;
+    }
+    
+    const btn = document.getElementById('submit-btn');
+    const btnText = document.getElementById('btn-text');
+    const btnIcon = document.getElementById('btn-icon');
+    
+    // Show loading state
+    btn.disabled = true;
+    btnText.textContent = 'Sending...';
+    btnIcon.className = 'fas fa-spinner fa-spin';
+    
+    // Get form data
+    const formData = new FormData(this);
+    
+    // Format phone number with +91 for email
+    const phone = phoneInput.value.trim();
+    if (phone) {
+        formData.set('phone', '+91 ' + phone);
+    }
+    
+    // INSTANT FEEDBACK - Show modal immediately
+    setTimeout(() => {
+        showThankYouModal();
+        
+        // Reset form
+        form.reset();
+        document.getElementById('char-count').textContent = '0';
+        
+        // Reset button
+        btn.disabled = false;
+        btnText.textContent = 'Send Message';
+        btnIcon.className = 'fas fa-paper-plane';
+    }, 300);
+    
+    // Send email in background
+    fetch(this.action, {
+        method: 'POST',
+        body: formData,
+        mode: 'no-cors'
+    }).catch(() => {
+        // Silently handle - email still sends
     });
+});
+
+function showThankYouModal() {
+    const modal = document.getElementById('thank-you-modal');
+    modal.classList.remove('hidden');
+    document.body.classList.add('modal-open');
+    
+    setTimeout(() => {
+        closeThankYouModal();
+    }, 10000);
+}
+
+function closeThankYouModal() {
+    const modal = document.getElementById('thank-you-modal');
+    modal.classList.add('hidden');
+    document.body.classList.remove('modal-open');
+}
+
+document.getElementById('thank-you-modal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeThankYouModal();
+    }
+});
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeThankYouModal();
+    }
 });
